@@ -5,7 +5,8 @@ import Footer from "@/components/Shared/Footer";
 import Navigation from "@/components/Shared/Navigation";
 import DataInput from "@/components/DataInput";
 import GraphVisualization from "@/components/Visualization/Graph";
-import AlgorithmSteps from "./components/Visualization/Algorithm";
+import AlgorithmSteps from "@/components/Visualization/Algorithm";
+import ResultSummary from "@/components/ResultSummary";
 import {
   type TabType,
   type Subject,
@@ -129,13 +130,16 @@ function App() {
     setIsRunning(false);
   }, []);
 
-  const handleStepSelect = useCallback((index: number) => {
-    // Allow selecting any valid step index (0 to steps.length)
-    if (index >= 0 && index <= steps.length) {
-      setCurrentStepIndex(index);
-      setIsRunning(false);
-    }
-  }, [steps.length]);
+  const handleStepSelect = useCallback(
+    (index: number) => {
+      // Allow selecting any valid step index (0 to steps.length)
+      if (index >= 0 && index <= steps.length) {
+        setCurrentStepIndex(index);
+        setIsRunning(false);
+      }
+    },
+    [steps.length],
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -179,6 +183,15 @@ function App() {
               onStepSelect={handleStepSelect}
             />
           </div>
+        )}
+
+        {/* Ket qua */}
+        {activeTab === "results" && (
+          <ResultSummary
+            nodes={currentGraphState.nodes}
+            subjects={subjects}
+            students={students}
+          />
         )}
 
         <Footer />
