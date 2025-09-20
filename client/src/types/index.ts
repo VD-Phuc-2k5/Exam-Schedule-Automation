@@ -19,10 +19,23 @@ export interface GraphNode {
   color: string | null;
   position: { x: number; y: number };
   neighbors: string[];
+  availableColors: string[];
 }
 
 export interface GraphEdge {
   from: string;
   to: string;
   students: string[];
+}
+
+export interface AlgorithmStep {
+  stepNumber: number;
+  description: string;
+  nodeId: string | null;
+  action: "select" | "color" | "reduce_degree" | "remove_color" | "complete";
+  color?: string;
+  degreeChanges?: { [key: string]: number };
+  removedColor?: string;
+  usedColorsCount?: number;
+  affectedNodes?: string[];
 }
