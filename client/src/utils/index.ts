@@ -1,6 +1,10 @@
-import { type Subject, type GraphNode, type GraphEdge } from "@/types";
-
-export const COLOR_NAMES = ["Ca 1", "Ca 2", "Ca 3", "Ca 4", "Ca 5"];
+import {
+  type Subject,
+  type GraphNode,
+  type GraphEdge,
+  type AlgorithmStep,
+} from "@/types";
+import { DEFAULT_COLORS } from "@/data";
 
 export function buildGraph(subjects: Subject[]): {
   nodes: GraphNode[];
@@ -27,6 +31,7 @@ export function buildGraph(subjects: Subject[]): {
         y: centerY + radius * Math.sin(angle),
       },
       neighbors: [],
+      availableColors: [...DEFAULT_COLORS],
     });
     adjacencyMap[subject.id] = new Set();
   });
@@ -61,4 +66,116 @@ export function buildGraph(subjects: Subject[]): {
   });
 
   return { nodes, edges };
+}
+
+export function generateColoringSteps(nodes: GraphNode[]): AlgorithmStep[] {
+  const steps: AlgorithmStep[] = [];
+  const workingNodes = nodes.map((node) => ({
+    ...node,
+    neighbors: [...node.neighbors],
+    availableColors: [...DEFAULT_COLORS],
+  }));
+
+  const usedColors = new Set<string>();
+  let stepNumber = 1;
+
+  while (workingNodes.some((node) => node.color === null)) {
+    // Tìm đỉnh chưa tô màu có bậc cao nhất
+    const uncoloredNodes = workingNodes.filter((node) => node.color === null);
+    const maxDegree = Math.max(...uncoloredNodes.map((node) => node.degree));
+    const targetNode = uncoloredNodes.find(
+      (node) => node.degree === maxDegree,
+    )!;
+
+    // Bước chọn đỉnh
+    steps.push({
+      stepNumber: stepNumber++,
+      description: `Chọn đỉnh "${targetNode.name}" có bậc cao nhất (bậc = ${targetNode.degree})`,
+      nodeId: targetNode.id,
+      action: "select",
+    });
+
+    // Tìm màu khả dụng từ danh sách màu có thể tô của đỉnh này
+    let assignedColor = "";
+
+    // Ưu tiên sử dụng màu đã tồn tại nếu có thể
+    for (const color of DEFAULT_COLORS) {
+      if (targetNode.availableColors.includes(color)) {
+        assignedColor = color;
+        if (!usedColors.has(color)) {
+          usedColors.add(color);
+        }
+        break;
+      }
+    }
+
+    // Tô màu cho đỉnh được chọn
+    targetNode.color = assignedColor;
+    const isNewColor = !usedColors.has(assignedColor);
+
+    steps.push({
+      stepNumber: stepNumber++,
+      description: `Tô màu cho đỉnh "${targetNode.name}" bằng màu ${assignedColor}${isNewColor ? " (màu mới)" : " (tái sử dụng)"}`,
+      nodeId: targetNode.id,
+      action: "color",
+      color: assignedColor,
+    });
+
+    // Loại bỏ màu này khỏi danh sách màu khả dụng của tất cả đỉnh kề chưa tô màu
+    const affectedNeighbors: string[] = [];
+    targetNode.neighbors.forEach((neighborId) => {
+      const neighbor = workingNodes.find((n) => n.id === neighborId);
+      if (neighbor && neighbor.color === null) {
+        const colorIndex = neighbor.availableColors.indexOf(assignedColor);
+        if (colorIndex > -1) {
+          neighbor.availableColors.splice(colorIndex, 1);
+          affectedNeighbors.push(neighbor.name);
+        }
+      }
+    });
+
+    if (affectedNeighbors.length > 0) {
+      steps.push({
+        stepNumber: stepNumber++,
+        description: `Loại bỏ màu ${assignedColor} khỏi danh sách màu khả dụng của các đỉnh kề: ${affectedNeighbors.join(", ")}`,
+        nodeId: null,
+        action: "remove_color",
+        removedColor: assignedColor,
+        affectedNodes: affectedNeighbors,
+      });
+    }
+
+    // Giảm bậc của các đỉnh kề chưa tô màu
+    const degreeChanges: { [key: string]: number } = {};
+    targetNode.neighbors.forEach((neighborId) => {
+      const neighbor = workingNodes.find((n) => n.id === neighborId);
+      if (neighbor && neighbor.color === null) {
+        neighbor.degree--;
+        neighbor.neighbors = neighbor.neighbors.filter(
+          (id) => id !== targetNode.id,
+        );
+        degreeChanges[neighborId] = neighbor.degree;
+      }
+    });
+
+    if (Object.keys(degreeChanges).length > 0) {
+      steps.push({
+        stepNumber: stepNumber++,
+        description: `Giảm bậc các đỉnh kề chưa tô màu với "${targetNode.name}"`,
+        nodeId: null,
+        action: "reduce_degree",
+        degreeChanges,
+      });
+    }
+  }
+
+  steps.push({
+    stepNumber: stepNumber,
+    description: `Hoàn thành thuật toán tô màu đồ thị (sử dụng ${usedColors.size} màu)`,
+    nodeId: null,
+    action: "complete",
+    usedColorsCount: usedColors.size,
+  });
+
+  return steps;
 }
