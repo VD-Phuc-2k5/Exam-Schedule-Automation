@@ -11,3 +11,18 @@ export interface Student {
   name: string;
   subjects: string[];
 }
+
+export interface GraphNode {
+  id: string;
+  name: string;
+  degree: number;
+  color: string | null;
+  position: { x: number; y: number };
+  neighbors: string[];
+}
+
+export interface GraphEdge {
+  from: string;
+  to: string;
+  students: string[];
+}
