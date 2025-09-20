@@ -1,198 +1,157 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import TheorySection from "@/components/TheorySection";
+import { useEffect, useCallback, useMemo } from "react";
 import Header from "@/components/Shared/Header";
 import Footer from "@/components/Shared/Footer";
 import Navigation from "@/components/Shared/Navigation";
-import DataInput from "@/components/DataInput";
-import GraphVisualization from "@/components/Visualization/Graph";
-import AlgorithmSteps from "@/components/Visualization/Algorithm";
-import ResultSummary from "@/components/ResultSummary";
-import {
-  type TabType,
-  type Subject,
-  type Student,
-  type GraphEdge,
-  type GraphNode,
-  type AlgorithmStep,
-} from "@/types";
-import { DEFAULT_SUBJECTS, DEFAULT_STUDENTS } from "@/data";
+import TabContent from "@/components/TabContent";
 import { buildGraph, generateColoringSteps } from "@/utils";
+import { useAppReducer } from "@/hooks/useAppReducer";
+import { useGraphState } from "@/hooks/useGraphState";
+import { useAutoPlay } from "@/hooks/useAutoPlay";
+import { type AnimationProps } from "@/types";
 
 function App() {
-  const [activeTab, setActiveTab] = useState<TabType>("theory");
-  const [subjects, setSubjects] = useState<Subject[]>(DEFAULT_SUBJECTS);
-  const [students, setStudents] = useState<Student[]>(DEFAULT_STUDENTS);
-  const [originalNodes, setOriginalNodes] = useState<GraphNode[]>([]);
-  const [originalEdges, setOriginalEdges] = useState<GraphEdge[]>([]);
-  const [steps, setSteps] = useState<AlgorithmStep[]>([]);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
+  const [state, dispatch] = useAppReducer();
 
-  // Update original graph when data changes
+  const {
+    activeTab,
+    subjects,
+    students,
+    originalNodes,
+    originalEdges,
+    steps,
+    currentStepIndex,
+    isRunning,
+  } = state;
+
+  // Update graph when data changes
   useEffect(() => {
     const { nodes: newNodes, edges: newEdges } = buildGraph(subjects);
-    setOriginalNodes(newNodes);
-    setOriginalEdges(newEdges);
-    setSteps(generateColoringSteps(newNodes));
-    setCurrentStepIndex(0);
-    setIsRunning(false);
-  }, [subjects, students]);
+    const newSteps = generateColoringSteps(newNodes);
 
-  // Calculate current graph state based on steps up to currentStepIndex
-  const currentGraphState = useMemo(() => {
-    if (currentStepIndex === 0) {
-      return {
-        nodes: originalNodes,
-        edges: originalEdges,
-        selectedNode: null,
-      };
-    }
+    dispatch({
+      type: "SET_GRAPH_DATA",
+      payload: { nodes: newNodes, edges: newEdges, steps: newSteps },
+    });
+  }, [dispatch, subjects, students]);
 
-    const nodes = [...originalNodes];
-    let selectedNode: string | null = null;
+  // Calculate current graph state
+  const graphState = useGraphState(
+    originalNodes,
+    originalEdges,
+    steps,
+    currentStepIndex,
+  );
 
-    // Apply all steps up to currentStepIndex (exclusive for step 0, inclusive for others)
-    const stepsToApply = currentStepIndex;
-    for (let i = 0; i < stepsToApply && i < steps.length; i++) {
-      const step = steps[i];
-
-      if (step.action === "select" && step.nodeId) {
-        selectedNode = step.nodeId;
-      } else if (step.action === "color" && step.nodeId && step.color) {
-        const nodeIndex = nodes.findIndex((n) => n.id === step.nodeId);
-        if (nodeIndex !== -1) {
-          nodes[nodeIndex] = { ...nodes[nodeIndex], color: step.color };
-        }
-        // Clear selection after coloring
-        if (selectedNode === step.nodeId) {
-          selectedNode = null;
-        }
-      } else if (step.action === "reduce_degree" && step.degreeChanges) {
-        Object.entries(step.degreeChanges).forEach(([nodeId, newDegree]) => {
-          const nodeIndex = nodes.findIndex((n) => n.id === nodeId);
-          if (nodeIndex !== -1) {
-            nodes[nodeIndex] = {
-              ...nodes[nodeIndex],
-              degree: newDegree,
-            };
-          }
-        });
-      } else if (step.action === "complete") {
-        selectedNode = null;
-      }
-    }
-
-    return {
-      nodes,
-      edges: originalEdges,
-      selectedNode,
-    };
-  }, [originalNodes, originalEdges, steps, currentStepIndex]);
-
-  // Auto-play functionality
-  useEffect(() => {
-    if (isRunning && currentStepIndex < steps.length - 1) {
-      const timer = setTimeout(() => {
-        setCurrentStepIndex((prev) => prev + 1);
-      }, 2000);
-      return () => clearTimeout(timer);
-    } else if (currentStepIndex >= steps.length - 1) {
-      setIsRunning(false);
-    }
-  }, [isRunning, currentStepIndex, steps.length]);
-
+  // Animation handlers
   const handleStart = useCallback(() => {
-    if (currentStepIndex < steps.length) {
-      setIsRunning(true);
-    }
-  }, [currentStepIndex, steps.length]);
+    dispatch({ type: "START_ANIMATION" });
+  }, [dispatch]);
 
   const handlePause = useCallback(() => {
-    setIsRunning(false);
-  }, []);
+    dispatch({ type: "PAUSE_ANIMATION" });
+  }, [dispatch]);
 
   const handleNext = useCallback(() => {
-    if (currentStepIndex < steps.length) {
-      setCurrentStepIndex((prev) => prev + 1);
-      setIsRunning(false);
-    }
-  }, [currentStepIndex, steps.length]);
+    dispatch({ type: "NEXT_STEP" });
+  }, [dispatch]);
 
   const handlePrevious = useCallback(() => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex((prev) => prev - 1);
-      setIsRunning(false);
-    }
-  }, [currentStepIndex]);
+    dispatch({ type: "PREVIOUS_STEP" });
+  }, [dispatch]);
 
   const handleReset = useCallback(() => {
-    setCurrentStepIndex(0);
-    setIsRunning(false);
-  }, []);
+    dispatch({ type: "RESET_ANIMATION" });
+  }, [dispatch]);
 
   const handleStepSelect = useCallback(
     (index: number) => {
-      // Allow selecting any valid step index (0 to steps.length)
-      if (index >= 0 && index <= steps.length) {
-        setCurrentStepIndex(index);
-        setIsRunning(false);
-      }
+      dispatch({ type: "SET_STEP_INDEX", payload: index });
     },
-    [steps.length],
+    [dispatch],
+  );
+
+  const handleComplete = useCallback(() => {
+    dispatch({ type: "PAUSE_ANIMATION" });
+  }, [dispatch]);
+
+  // Auto-play functionality with improved control
+  useAutoPlay(
+    isRunning,
+    currentStepIndex,
+    steps.length,
+    handleNext,
+    handleComplete,
+  );
+
+  // Data handlers
+  const handleSubjectsChange = useCallback(
+    (newSubjects: typeof subjects) => {
+      dispatch({ type: "SET_SUBJECTS", payload: newSubjects });
+    },
+    [dispatch],
+  );
+
+  const handleStudentsChange = useCallback(
+    (newStudents: typeof students) => {
+      dispatch({ type: "SET_STUDENTS", payload: newStudents });
+    },
+    [dispatch],
+  );
+
+  const handleTabChange = useCallback(
+    (tab: typeof activeTab) => {
+      dispatch({ type: "SET_ACTIVE_TAB", payload: tab });
+    },
+    [dispatch],
+  );
+
+  // Create animation props with proper interface
+  const animationProps: AnimationProps = useMemo(
+    () => ({
+      steps,
+      currentStepIndex,
+      isRunning,
+      canStart: !isRunning && currentStepIndex < steps.length,
+      canNext: currentStepIndex < steps.length,
+      canPrevious: currentStepIndex > 0,
+      canReset: currentStepIndex > 0,
+      onStart: handleStart,
+      onPause: handlePause,
+      onReset: handleReset,
+      onNext: handleNext,
+      onPrevious: handlePrevious,
+      onStepSelect: handleStepSelect,
+    }),
+    [
+      steps,
+      currentStepIndex,
+      isRunning,
+      handleStart,
+      handlePause,
+      handleReset,
+      handleNext,
+      handlePrevious,
+      handleStepSelect,
+    ],
   );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-8">
         <Header />
-        <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Navigation activeTab={activeTab} setActiveTab={handleTabChange} />
 
-        {/* Ly thuyet */}
         <div className="space-y-8">
-          {activeTab === "theory" && <TheorySection />}
+          <TabContent
+            activeTab={activeTab}
+            subjects={subjects}
+            students={students}
+            onSubjectsChange={handleSubjectsChange}
+            onStudentsChange={handleStudentsChange}
+            graphState={graphState}
+            animationProps={animationProps}
+          />
         </div>
-
-        {/* Du lieu */}
-        {activeTab === "data" && (
-          <DataInput
-            subjects={subjects}
-            students={students}
-            onSubjectsChange={setSubjects}
-            onStudentsChange={setStudents}
-          />
-        )}
-
-        {/* Do thi */}
-        {activeTab === "visualization" && (
-          <div className="grid lg:grid-cols-2 gap-8">
-            <GraphVisualization
-              nodes={currentGraphState.nodes}
-              edges={currentGraphState.edges}
-              selectedNode={currentGraphState.selectedNode}
-            />
-
-            <AlgorithmSteps
-              steps={steps}
-              currentStepIndex={currentStepIndex}
-              isRunning={isRunning}
-              onStart={handleStart}
-              onPause={handlePause}
-              onReset={handleReset}
-              onNext={handleNext}
-              onPrevious={handlePrevious}
-              onStepSelect={handleStepSelect}
-            />
-          </div>
-        )}
-
-        {/* Ket qua */}
-        {activeTab === "results" && (
-          <ResultSummary
-            nodes={currentGraphState.nodes}
-            subjects={subjects}
-            students={students}
-          />
-        )}
 
         <Footer />
       </div>
