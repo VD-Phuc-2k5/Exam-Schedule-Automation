@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 function Header() {
   return (
     <div className="text-center mb-8">
@@ -12,4 +14,4 @@ function Header() {
   );
 }
 
-export default Header;
+export default memo(Header);
