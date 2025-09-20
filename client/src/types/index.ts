@@ -91,3 +91,7 @@ export interface GraphState {
   edges: GraphEdge[];
   selectedNode: string | null;
 }
+
+export interface ExamSchedule {
+  [color: string]: GraphNode[];
+}
