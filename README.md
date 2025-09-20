@@ -25,7 +25,7 @@
 
 ## Lưu ý
 
-- Nếu bài toán có thêm ràng buộc về số phòng thi và sức chưa của phòng thi thì
+- Nếu bài toán có thêm ràng buộc về số phòng thi và sức chứa của phòng thi thì
   không nên dùng tô màu để giải quyết bài toán.
 
 - Thay vào đó hãy dùng các thuật toán heuristics, hoặc chia bài toán nhỏ hơn để
