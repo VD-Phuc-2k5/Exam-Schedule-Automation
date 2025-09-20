@@ -1,5 +1,5 @@
 import { Palette, FileText, BarChart3 } from "lucide-react";
-import { type TabType } from "../../types";
+import { type TabType } from "@/types";
 
 interface NavigationProps {
   activeTab: TabType;
