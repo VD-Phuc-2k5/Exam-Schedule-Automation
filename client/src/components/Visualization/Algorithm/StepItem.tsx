@@ -13,6 +13,7 @@ const getActionLabel = (action: string): string => {
     select: "Chọn",
     color: "Tô màu",
     reduce_degree: "Giảm bậc",
+    remove_color: "Loại bỏ màu đã tô",
     complete: "Hoàn thành",
   };
   return actionLabels[action as keyof typeof actionLabels] || action;

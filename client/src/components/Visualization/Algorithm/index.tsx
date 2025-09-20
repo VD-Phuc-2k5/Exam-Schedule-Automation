@@ -13,6 +13,7 @@ interface AlgorithmStepsProps {
   onPause: () => void;
   onReset: () => void;
   onNext: () => void;
+  onPrevious: () => void;
   onStepSelect: (index: number) => void;
 }
 
@@ -24,6 +25,7 @@ const AlgorithmSteps: React.FC<AlgorithmStepsProps> = ({
   onPause,
   onReset,
   onNext,
+  onPrevious,
   onStepSelect,
 }) => {
   const currentStep = steps[currentStepIndex];
@@ -55,6 +57,7 @@ const AlgorithmSteps: React.FC<AlgorithmStepsProps> = ({
         onPause={onPause}
         onReset={onReset}
         onNext={onNext}
+        onPrev={onPrevious}
       />
 
       {currentStep && (

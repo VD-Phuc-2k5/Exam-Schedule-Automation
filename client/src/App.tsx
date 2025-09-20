@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import TheorySection from "@/components/TheorySection";
 import Header from "@/components/Shared/Header";
 import Footer from "@/components/Shared/Footer";
@@ -21,23 +21,72 @@ function App() {
   const [activeTab, setActiveTab] = useState<TabType>("theory");
   const [subjects, setSubjects] = useState<Subject[]>(DEFAULT_SUBJECTS);
   const [students, setStudents] = useState<Student[]>(DEFAULT_STUDENTS);
-  const [nodes, setNodes] = useState<GraphNode[]>([]);
-  const [edges, setEdges] = useState<GraphEdge[]>([]);
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [originalNodes, setOriginalNodes] = useState<GraphNode[]>([]);
+  const [originalEdges, setOriginalEdges] = useState<GraphEdge[]>([]);
   const [steps, setSteps] = useState<AlgorithmStep[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
 
-  // Update graph when data changes
+  // Update original graph when data changes
   useEffect(() => {
     const { nodes: newNodes, edges: newEdges } = buildGraph(subjects);
-    setNodes(newNodes);
-    setEdges(newEdges);
-    setSelectedNode(null);
+    setOriginalNodes(newNodes);
+    setOriginalEdges(newEdges);
     setSteps(generateColoringSteps(newNodes));
     setCurrentStepIndex(0);
     setIsRunning(false);
   }, [subjects, students]);
+
+  // Calculate current graph state based on steps up to currentStepIndex
+  const currentGraphState = useMemo(() => {
+    if (currentStepIndex === 0) {
+      return {
+        nodes: originalNodes,
+        edges: originalEdges,
+        selectedNode: null,
+      };
+    }
+
+    const nodes = [...originalNodes];
+    let selectedNode: string | null = null;
+
+    // Apply all steps up to currentStepIndex (exclusive for step 0, inclusive for others)
+    const stepsToApply = currentStepIndex;
+    for (let i = 0; i < stepsToApply && i < steps.length; i++) {
+      const step = steps[i];
+
+      if (step.action === "select" && step.nodeId) {
+        selectedNode = step.nodeId;
+      } else if (step.action === "color" && step.nodeId && step.color) {
+        const nodeIndex = nodes.findIndex((n) => n.id === step.nodeId);
+        if (nodeIndex !== -1) {
+          nodes[nodeIndex] = { ...nodes[nodeIndex], color: step.color };
+        }
+        // Clear selection after coloring
+        if (selectedNode === step.nodeId) {
+          selectedNode = null;
+        }
+      } else if (step.action === "reduce_degree" && step.degreeChanges) {
+        Object.entries(step.degreeChanges).forEach(([nodeId, newDegree]) => {
+          const nodeIndex = nodes.findIndex((n) => n.id === nodeId);
+          if (nodeIndex !== -1) {
+            nodes[nodeIndex] = {
+              ...nodes[nodeIndex],
+              degree: newDegree,
+            };
+          }
+        });
+      } else if (step.action === "complete") {
+        selectedNode = null;
+      }
+    }
+
+    return {
+      nodes,
+      edges: originalEdges,
+      selectedNode,
+    };
+  }, [originalNodes, originalEdges, steps, currentStepIndex]);
 
   // Auto-play functionality
   useEffect(() => {
@@ -51,48 +100,9 @@ function App() {
     }
   }, [isRunning, currentStepIndex, steps.length]);
 
-  // Apply step to graph
-  useEffect(() => {
-    if (currentStepIndex >= 0 && currentStepIndex < steps.length) {
-      const step = steps[currentStepIndex];
-
-      setNodes((prevNodes) => {
-        const newNodes = [...prevNodes];
-
-        if (step.action === "select" && step.nodeId) {
-          setSelectedNode(step.nodeId);
-        } else if (step.action === "color" && step.nodeId && step.color) {
-          const nodeIndex = newNodes.findIndex((n) => n.id === step.nodeId);
-          if (nodeIndex !== -1) {
-            newNodes[nodeIndex] = { ...newNodes[nodeIndex], color: step.color };
-          }
-          setSelectedNode(null);
-        } else if (step.action === "reduce_degree" && step.degreeChanges) {
-          Object.entries(step.degreeChanges).forEach(([nodeId, newDegree]) => {
-            const nodeIndex = newNodes.findIndex((n) => n.id === nodeId);
-            if (nodeIndex !== -1) {
-              newNodes[nodeIndex] = {
-                ...newNodes[nodeIndex],
-                degree: newDegree,
-              };
-            }
-          });
-        } else if (step.action === "complete") {
-          setSelectedNode(null);
-          setIsRunning(false);
-        }
-
-        return newNodes;
-      });
-    }
-  }, [currentStepIndex, steps]);
-
   const handleStart = useCallback(() => {
-    if (currentStepIndex < steps.length - 1) {
+    if (currentStepIndex < steps.length) {
       setIsRunning(true);
-      if (currentStepIndex === 0) {
-        setCurrentStepIndex(0);
-      }
     }
   }, [currentStepIndex, steps.length]);
 
@@ -101,27 +111,31 @@ function App() {
   }, []);
 
   const handleNext = useCallback(() => {
-    if (currentStepIndex < steps.length - 1) {
+    if (currentStepIndex < steps.length) {
       setCurrentStepIndex((prev) => prev + 1);
       setIsRunning(false);
     }
   }, [currentStepIndex, steps.length]);
 
+  const handlePrevious = useCallback(() => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex((prev) => prev - 1);
+      setIsRunning(false);
+    }
+  }, [currentStepIndex]);
+
   const handleReset = useCallback(() => {
-    // Completely rebuild graph and steps from scratch
-    const { nodes: resetNodes, edges: resetEdges } = buildGraph(subjects);
-    setNodes(resetNodes);
-    setEdges(resetEdges);
-    setSteps(generateColoringSteps(resetNodes));
     setCurrentStepIndex(0);
     setIsRunning(false);
-    setSelectedNode(null);
-  }, [subjects]);
+  }, []);
 
   const handleStepSelect = useCallback((index: number) => {
-    setCurrentStepIndex(index);
-    setIsRunning(false);
-  }, []);
+    // Allow selecting any valid step index (0 to steps.length)
+    if (index >= 0 && index <= steps.length) {
+      setCurrentStepIndex(index);
+      setIsRunning(false);
+    }
+  }, [steps.length]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -148,9 +162,9 @@ function App() {
         {activeTab === "visualization" && (
           <div className="grid lg:grid-cols-2 gap-8">
             <GraphVisualization
-              nodes={nodes}
-              edges={edges}
-              selectedNode={selectedNode}
+              nodes={currentGraphState.nodes}
+              edges={currentGraphState.edges}
+              selectedNode={currentGraphState.selectedNode}
             />
 
             <AlgorithmSteps
@@ -161,6 +175,7 @@ function App() {
               onPause={handlePause}
               onReset={handleReset}
               onNext={handleNext}
+              onPrevious={handlePrevious}
               onStepSelect={handleStepSelect}
             />
           </div>

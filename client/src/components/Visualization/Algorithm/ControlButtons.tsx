@@ -1,5 +1,5 @@
 import React from "react";
-import { Play, RotateCcw, SkipForward, Pause } from "lucide-react";
+import { Play, RotateCcw, SkipForward, SkipBack, Pause } from "lucide-react";
 
 interface ControlButtonsProps {
   isRunning: boolean;
@@ -9,6 +9,7 @@ interface ControlButtonsProps {
   onPause: () => void;
   onReset: () => void;
   onNext: () => void;
+  onPrev: () => void;
 }
 
 const ControlButtons: React.FC<ControlButtonsProps> = ({
@@ -19,6 +20,7 @@ const ControlButtons: React.FC<ControlButtonsProps> = ({
   onPause,
   onReset,
   onNext,
+  onPrev,
 }) => {
   const isLastStep = currentStepIndex >= totalSteps - 1;
   const isFirstStep = currentStepIndex === 0;
@@ -36,6 +38,15 @@ const ControlButtons: React.FC<ControlButtonsProps> = ({
           <Play className="w-4 h-4 mr-2" />
         )}
         {isRunning ? "Tạm dừng" : "Chạy tự động"}
+      </button>
+
+      <button
+        onClick={onPrev}
+        disabled={isFirstStep}
+        className="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        <SkipBack className="w-4 h-4 mr-2" />
+        Bước trước đó
       </button>
 
       <button

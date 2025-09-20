@@ -111,11 +111,10 @@ export function generateColoringSteps(nodes: GraphNode[]): AlgorithmStep[] {
 
     // Tô màu cho đỉnh được chọn
     targetNode.color = assignedColor;
-    const isNewColor = !usedColors.has(assignedColor);
 
     steps.push({
       stepNumber: stepNumber++,
-      description: `Tô màu cho đỉnh "${targetNode.name}" bằng màu ${assignedColor}${isNewColor ? " (màu mới)" : " (tái sử dụng)"}`,
+      description: `Tô màu cho đỉnh "${targetNode.name}" bằng màu ${assignedColor}`,
       nodeId: targetNode.id,
       action: "color",
       color: assignedColor,
