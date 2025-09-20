@@ -20,3 +20,11 @@ export const DEFAULT_STUDENTS: Student[] = [
   { id: "SV9", name: "Bùi Văn I", subjects: ["4"] },
   { id: "SV10", name: "Mai Thị K", subjects: ["5"] },
 ];
+
+export const DEFAULT_COLORS = [
+  "#4ECDC4",
+  "#FF6B6B",
+  "#A8A2D3",
+  "#FFD93D",
+  "#2C3E50",
+];
