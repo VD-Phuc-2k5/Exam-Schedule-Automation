@@ -16,11 +16,9 @@
   - [x] Màu: Mỗi màu đại diện cho một ca thi
 
 ## Các bước giải quyết
-
 ![demo](./assets/demo.gif)
 
 ## Kết quả
-
 ![result](./assets/result.png)
 
 ## Lưu ý
